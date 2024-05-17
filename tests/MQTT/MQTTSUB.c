@@ -3,12 +3,15 @@
 #include <string.h>
 #include <mosquitto.h>
 
-// gcc mqttCommunication.c -o mqtt_pub -lmosquitto
+// gcc MQTTSUB.c -o subscriber -lmosquitto
 
 
-#define MQTT_BROKER_HOST "10.10.0.197"
+// #define MQTT_BROKER_HOST "10.10.0.197"
+// #define MQTT_TOPIC "final"
+#define MQTT_BROKER_HOST "127.0.0.1"
+#define MQTT_TOPIC "test"
+
 #define MQTT_PORT 8883
-#define MQTT_TOPIC "final"
 #define MQTT_QOS 1
 #define MQTT_MESSAGE "Allo le monde"
 
@@ -53,11 +56,6 @@ int main() {
     if (rc != MOSQ_ERR_SUCCESS) {
         fprintf(stderr, "Connexion impossible au broker: %s\n", mosquitto_strerror(rc));
         return 1;
-    }
-
-    sendRc = mosquitto_publish(mosq, NULL, MQTT_TOPIC, strlen(MQTT_MESSAGE), MQTT_MESSAGE, 0, false);
-    if (rc != MOSQ_ERR_SUCCESS) {
-        fprintf(stderr, "Failed to publish message: %s\n", mosquitto_strerror(rc));
     }
 
     mosquitto_loop_forever(mosq, -1, 1);

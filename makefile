@@ -1,6 +1,6 @@
-all: program
-program: tcp_communication.c
-	@gcc tcp_communication.c -o tcpClient  -lpthread
-	@./tcpClient
-	@rm -rf ./tcpClient
+all: container
+container: container.c
+	@gcc container.c -o container -lpthread -lmosquitto
+	@./container
+	@rm -rf ./container
 
