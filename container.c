@@ -37,9 +37,10 @@ struct mosquitto *mosq = NULL;
 
 /// <<< START FUNCTIONS
 
-/**
- * MQTT Message callback method used when connected to Broker.
- */
+/// @brief MQTT Message callback method used when connected to Broker.
+/// @param mosq MQTT Client
+/// @param userdata
+/// @param result
 void on_connect(struct mosquitto *mosq, void *userdata, int result)
 {
     if (result == 0)
@@ -52,19 +53,19 @@ void on_connect(struct mosquitto *mosq, void *userdata, int result)
     }
 }
 
-/**
- * The MQTT Callback method used when sending a message
- */
+/// @brief The MQTT Callback method used when sending a message
+/// @param mosq MQTT Client.
+/// @param userdata userdata
+/// @param mid
 void on_publish(struct mosquitto *mosq, void *userdata, int mid)
 {
     printf("State sent.\n");
 }
 
-/**
- * The MQTT Message callback method. Receives incoming messages from broker.
- * On Mqtt message, I should parse through the message of this format : <team_num>:<on|off>.
- * Once I do this I need to send my raspi counter-part a the verbatim message of this format through our TCP connection: <team_num>:<1|0>
- */
+/// @brief  * The MQTT Message callback method. Receives incoming messages from broker. On Mqtt message, I should parse through the message of this format : <team_num>:<on|off>. Once I do this I need to send my raspi counter-part a the verbatim message of this format through our TCP connection: <team_num>:<1|0>
+/// @param mosq  The MQTT Client.
+/// @param userdata The user data.
+/// @param message Message struct.
 void on_message(struct mosquitto *mosq, void *userdata, const struct mosquitto_message *message)
 {
     printf("Getting message from mqtt\n");
@@ -99,14 +100,6 @@ void on_message(struct mosquitto *mosq, void *userdata, const struct mosquitto_m
 
     send(sock, logBuffer, strlen(logBuffer), 0);
     printf("Message: (%s) %s\n", message->topic, (char *)message->payload);
-}
-
-void sendTeamLogToPi(int teamNumber, int status)
-{
-}
-
-void postTeamLogToTopic(int status)
-{
 }
 
 /**
@@ -147,33 +140,34 @@ size_t trimwhitespace(char *out, size_t len, const char *str)
     return out_size;
 }
 
-/**
- * The method triggered when I receive a message through my TCP connection.
- * Once I receive a message, it will either be 0 or 1. I then post to the MQTT topic a log of this format :
- * <my_team_num>:<received_status>.
- */
+/// @brief The method triggered when I receive a message through my TCP connection. Once I receive a message, it will either be 0 or 1. I then post to the MQTT topic a log of this format : <my_team_num>:<received_status>.
+/// @return No returns
 void *tCPMessageCallBack()
 {
     char answer[100];
     char output[100];
-    while (1) {
+    while (1)
+    {
         ssize_t receivedBytes = recv(sock, answer, sizeof(answer) - 1, 0); // Subtract 1 for the null terminator
-        if (receivedBytes == -1) {
+        if (receivedBytes == -1)
+        {
             perror("Error receiving message");
-            break; 
-        } else if (receivedBytes == 0) {
+            break;
+        }
+        else if (receivedBytes == 0)
+        {
             printf("Connection closed\n");
-            break; 
+            break;
         }
 
-        answer[receivedBytes] = '\0'; // Null terminate the received string
+        answer[receivedBytes] = '\0'; 
         printf("< %s\n", answer);
 
-        trimwhitespace(output, sizeof(output), answer);    
+        trimwhitespace(output, sizeof(output), answer);
 
         strcat(output, ":");
-        
-        char str[5]; // Ensure enough space for the integer representation
+
+        char str[5];
         sprintf(str, "%d", TEAM_NUMBER);
 
         strcat(output, str);
