@@ -10,6 +10,7 @@
 #define BUFFER_SIZE 1024
 
 int sock_dist;
+int status = 0;
 
 void *tCPMessageCallBack() {
     char buffer[BUFFER_SIZE] = {0};
@@ -24,11 +25,32 @@ void *tCPMessageCallBack() {
 
             fflush(stdout); 
             memset(buffer, 0, BUFFER_SIZE); 
-            send(sock_dist, "hello", strlen("hello"), 0);
         }
     }
 }
 
+void *sendStatus() {
+    char buffer[BUFFER_SIZE] = {0};
+
+    while(1) {
+
+        if (status) {
+            sleep(2);
+            fflush(stdout); 
+            memset(buffer, 0, BUFFER_SIZE); 
+            sprintf(buffer, "%i\n", status);
+            send(sock_dist, buffer, strlen(buffer), 0);
+            status = 0;
+        } else {
+            sleep(2);
+            fflush(stdout); 
+            memset(buffer, 0, BUFFER_SIZE); 
+            sprintf(buffer, "%i\n", status);
+            send(sock_dist, buffer, strlen(buffer), 0);
+            status = 1;
+        }
+    }
+}
 
 
 /// gcc TCPSERVER.c -o server -lpthread
@@ -53,14 +75,20 @@ int main() {
     listen(socket_local, 3);
     sock_dist = accept(socket_local, (struct sockaddr *)&address, (socklen_t*)&addrlen);
 
-    pthread_t t_tcp_message;
+    pthread_t t_tcp_message, t_status;
 
     if (pthread_create(&t_tcp_message,NULL,tCPMessageCallBack,'\0') != 0) {
         printf("ERROR AT TCP ONMESSAGE CALLBACK THREAD\n");
         return 1;
     }
 
+    if (pthread_create(&t_status,NULL,sendStatus,'\0') != 0) {
+        printf("ERROR AT TCP ONMESSAGE CALLBACK THREAD\n");
+        return 1;
+    }
+
     pthread_join(t_tcp_message, NULL);
+    pthread_join(t_status, NULL);
     close(sock_dist);
     close(socket_local);
     return 0;

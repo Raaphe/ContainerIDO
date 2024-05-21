@@ -25,8 +25,10 @@
 
 #define TEAM_NUMBER 3
 
-#define PI_IP "10.10.20.254"
+// #define PI_IP "10.10.0.197"
+// #define PORT 8888
 #define PORT 9991
+#define PI_IP "127.0.0.1"
 #define BUFFER_SIZE 1024
 /// >>> END CONSTANTS
 
@@ -62,13 +64,12 @@ void on_publish(struct mosquitto *mosq, void *userdata, int mid)
     printf("State sent.\n");
 }
 
-/// @brief  * The MQTT Message callback method. Receives incoming messages from broker. On Mqtt message, I should parse through the message of this format : <team_num>:<on|off>. Once I do this I need to send my raspi counter-part a the verbatim message of this format through our TCP connection: <team_num>:<1|0>
+/// @brief The MQTT Message callback method. Receives incoming messages from broker. On Mqtt message, I should parse through the message of this format : <team_num>:<on|off>. Once I do this I need to send my raspi counter-part a the verbatim message of this format through our TCP connection: <team_num>:<1|0>
 /// @param mosq  The MQTT Client.
 /// @param userdata The user data.
 /// @param message Message struct.
 void on_message(struct mosquitto *mosq, void *userdata, const struct mosquitto_message *message)
 {
-    printf("Getting message from mqtt\n");
     if (((char *)message->payload)[0] == TEAM_NUMBER)
     {
         return;
@@ -77,34 +78,30 @@ void on_message(struct mosquitto *mosq, void *userdata, const struct mosquitto_m
     const char splitter[2] = ":";
     char *token;
 
+    printf("%s\n",(char *)message->payload);
+
     token = strtok(message->payload, splitter);
     char logBuffer[10];
     int first = 1;
 
-    while (token != NULL)
-    {
-        printf(" %s\n", token);
+    char teamNum = token[0];
+    token = strtok(NULL, splitter);
 
-        if (first)
-        {
-            first = 0;
-            strcat(token, logBuffer);
-            strcat(token, ":");
-        }
-        else
-        {
-            strcat(token, logBuffer);
-        }
-        token = strtok(NULL, splitter);
+    if (token[1] == 'f') {
+        sprintf(logBuffer, "%c:0\n", teamNum);
+
+    } if (token[1] == 'n') {
+        sprintf(logBuffer, "%c:1\n", teamNum);
     }
-
+    
     send(sock, logBuffer, strlen(logBuffer), 0);
-    printf("Message: (%s) %s\n", message->topic, (char *)message->payload);
+    return;        
+
 }
 
 /**
  * CREDIT TO THIS METHOD GOES TO [ADAM ROSENFIELD](https://stackoverflow.com/users/9530/adam-rosenfield).
- * [LINK](https://stackoverflow.com/a/122721)
+ * [SOURCE LINK](https://stackoverflow.com/a/122721)
  */
 size_t trimwhitespace(char *out, size_t len, const char *str)
 {
@@ -144,11 +141,13 @@ size_t trimwhitespace(char *out, size_t len, const char *str)
 /// @return No returns
 void *tCPMessageCallBack()
 {
-    char answer[100];
-    char output[100];
     while (1)
     {
-        ssize_t receivedBytes = recv(sock, answer, sizeof(answer) - 1, 0); // Subtract 1 for the null terminator
+        char answer[100];
+        char output[100];
+
+        
+        int receivedBytes = recv(sock, answer, 100, 0);
         if (receivedBytes == -1)
         {
             perror("Error receiving message");
@@ -160,19 +159,22 @@ void *tCPMessageCallBack()
             break;
         }
 
-        answer[receivedBytes] = '\0'; 
+        answer[100] = '\0'; 
         printf("< %s\n", answer);
 
         trimwhitespace(output, sizeof(output), answer);
-
-        strcat(output, ":");
-
         char str[5];
-        sprintf(str, "%d", TEAM_NUMBER);
+        
+        if (output[0] == '1') {
+            sprintf(str, "%i:on", TEAM_NUMBER);
+        }
+        else if (output[0] == '0')
+        {
+            sprintf(str, "%i:off", TEAM_NUMBER);
+        }
+        
 
-        strcat(output, str);
-
-        mosquitto_publish(mosq, NULL, MQTT_TOPIC, strlen(output), output, 0, false);
+        mosquitto_publish(mosq, NULL, MQTT_TOPIC, strlen(str), str, 0, false);
     }
 }
 /// >>> END FUNCTIONS
@@ -211,7 +213,7 @@ int main()
 
     /// >>> END MQTT
 
-    /// <<< START TCP
+    // /// <<< START TCP
     struct sockaddr_in dest_addr;
 
     sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -233,13 +235,13 @@ int main()
         return 1;
     }
 
-    /// >>> END THREADS
+    // /// >>> END THREADS
 
     /// <<< START GARBAGE COLLECTOR
-    close(sock);
     mosquitto_loop_forever(mosq, -1, 1);
     mosquitto_destroy(mosq);
     mosquitto_lib_cleanup();
+    close(sock);
     pthread_join(t_tcp_message, NULL);
     /// >>> END GARBAGE COLLECTOR
 
