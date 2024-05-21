@@ -12,6 +12,10 @@ The container code for the final project in the scope of my IoT class.
 
 # SETUP
 
+###### Prerequisites
+
+> Make sure you have downloaded and configured the mosquitto library. More information can be found [here]().
+
 1. Clone project
 
 ```git
